@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 import colorsys
 import webcolors
@@ -36,8 +36,35 @@ class ColorIdentifierApp:
         self.root = root
         self.root.title("Image Color Identifier")
         self.root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}")
-        self.root.configure(bg="#2c3e50")
-
+        
+        self.colors = {
+            "bg": "#2a2a2a",
+            "panel": "#333333",
+            "primary": "#4d94ff",
+            "secondary": "#767676",
+            "success": "#2ecc71",
+            "danger": "#e74c3c",
+            "dark": "#1a1a1a",
+            "light": "#cccccc",
+            "accent": "#3498db"
+        }
+        
+        self.root.configure(bg=self.colors["bg"])
+        
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        style.configure('TButton', font=('Segoe UI', 10), 
+                       background=self.colors["primary"], foreground=self.colors["light"])
+        style.map('TButton', 
+                 background=[('active', self.colors["accent"])],
+                 foreground=[('active', self.colors["light"])])
+        
+        style.configure('Horizontal.TScrollbar', background=self.colors["secondary"], 
+                       troughcolor=self.colors["dark"], bordercolor=self.colors["dark"])
+        style.configure('Vertical.TScrollbar', background=self.colors["secondary"], 
+                       troughcolor=self.colors["dark"], bordercolor=self.colors["dark"])
+        
         self.zoom_level = 1.0
         self.original_image = None
         self.display_image = None
@@ -47,45 +74,101 @@ class ColorIdentifierApp:
         self.bind_events()
 
     def create_widgets(self):
-        top_controls = tk.Frame(self.root, bg="#2c3e50")
-        top_controls.pack(fill=tk.X, pady=10)
+        main_container = tk.Frame(self.root, bg=self.colors["bg"], padx=20, pady=10)
+        main_container.pack(fill=tk.BOTH, expand=True)
 
-        tk.Button(top_controls, text="Upload Image", command=self.upload_image,
-                  bg="#3498db", fg="white", font=("Arial", 12, "bold")).pack(side=tk.LEFT, padx=10)
+        top_controls = tk.Frame(main_container, bg=self.colors["bg"], pady=10)
+        top_controls.pack(fill=tk.X)
 
-        self.zoom_in_btn = tk.Button(top_controls, text="🔍+", command=self.zoom_in_mode,
-                                     bg="#27ae60", fg="white", font=("Arial", 12))
-        self.zoom_in_btn.pack(side=tk.LEFT)
+        btn_params = {
+            'font': ('Segoe UI', 10, 'bold'),
+            'borderwidth': 0,
+            'padx': 15,
+            'pady': 8,
+            'cursor': 'hand2',
+            'relief': tk.RAISED
+        }
+        
+        upload_btn = tk.Button(top_controls, text="Upload Image", command=self.upload_image,
+                  bg=self.colors["primary"], fg=self.colors["light"], **btn_params)
+        upload_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.zoom_out_btn = tk.Button(top_controls, text="🔍-", command=self.zoom_out_mode,
-                                      bg="#c0392b", fg="white", font=("Arial", 12))
-        self.zoom_out_btn.pack(side=tk.LEFT)
 
-        self.pointer_btn = tk.Button(top_controls, text="Pointer Mode", command=self.reset_pointer_mode,
-                                     bg="#95a5a6", fg="white", font=("Arial", 12))
+        tool_frame = tk.Frame(top_controls, bg=self.colors["bg"], padx=5)
+        tool_frame.pack(side=tk.LEFT)
+ 
+        zoom_frame = tk.LabelFrame(tool_frame, text="Zoom Controls", bg=self.colors["panel"], 
+                                  fg=self.colors["light"], padx=10, pady=5)
+        zoom_frame.pack(side=tk.LEFT, padx=10)
+        
+        self.zoom_in_btn = tk.Button(zoom_frame, text="🔍+", command=self.zoom_in_mode,
+                                     bg=self.colors["success"], fg=self.colors["light"], **btn_params)
+        self.zoom_in_btn.pack(side=tk.LEFT, padx=2)
+
+        self.zoom_out_btn = tk.Button(zoom_frame, text="🔍-", command=self.zoom_out_mode,
+                                      bg=self.colors["danger"], fg=self.colors["light"], **btn_params)
+        self.zoom_out_btn.pack(side=tk.LEFT, padx=2)
+
+        self.pointer_btn = tk.Button(tool_frame, text="Pointer Mode", command=self.reset_pointer_mode,
+                                     bg=self.colors["secondary"], fg=self.colors["light"], **btn_params)
         self.pointer_btn.pack(side=tk.LEFT, padx=10)
+        
 
-        self.image_frame = tk.Frame(self.root)
-        self.image_frame.pack(pady=5)
+        self.zoom_label = tk.Label(tool_frame, text="Zoom: 100%", 
+                                  bg=self.colors["bg"], fg=self.colors["light"],
+                                  font=('Segoe UI', 10))
+        self.zoom_label.pack(side=tk.LEFT, padx=10)
 
-        self.scroll_x = tk.Scrollbar(self.image_frame, orient=tk.HORIZONTAL)
-        self.scroll_y = tk.Scrollbar(self.image_frame, orient=tk.VERTICAL)
+        content_frame = tk.Frame(main_container, bg=self.colors["bg"])
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
 
-        self.canvas = tk.Canvas(self.image_frame, bg="white", cursor="cross",
-                                width=1000, height=500,
+        self.image_frame = tk.LabelFrame(content_frame, text="Image Viewer", 
+                                       bg=self.colors["panel"], fg=self.colors["light"],
+                                       padx=5, pady=5)
+        self.image_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+
+        self.scroll_x = ttk.Scrollbar(self.image_frame, orient=tk.HORIZONTAL)
+        self.scroll_y = ttk.Scrollbar(self.image_frame, orient=tk.VERTICAL)
+
+        self.canvas = tk.Canvas(self.image_frame, bg=self.colors["dark"], cursor="cross",
+                                width=800, height=500,
                                 xscrollcommand=self.scroll_x.set,
-                                yscrollcommand=self.scroll_y.set)
+                                yscrollcommand=self.scroll_y.set,
+                                highlightthickness=0)
         self.scroll_x.config(command=self.canvas.xview)
         self.scroll_y.config(command=self.canvas.yview)
 
         self.scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
         self.scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas.pack(side=tk.LEFT)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.canvas.bind("<Button-1>", self.get_color)
+        
 
-        self.info_frame = tk.Frame(self.root, bg="#2c3e50")
-        self.info_frame.pack(pady=10, fill=tk.X)
+        self.info_panel = tk.LabelFrame(content_frame, text="Color Information", 
+                                      bg=self.colors["panel"], fg=self.colors["light"],
+                                      width=350, padx=10, pady=10)
+        self.info_panel.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
+        self.info_panel.pack_propagate(False)
+        
+
+        self.preview_frame = tk.Frame(self.info_panel, bg=self.colors["panel"], pady=10)
+        self.preview_frame.pack(fill=tk.X)
+        
+        self.color_preview = tk.Canvas(self.preview_frame, width=150, height=100, 
+                                     bg=self.colors["dark"], highlightthickness=1, 
+                                     highlightbackground=self.colors["light"])
+        self.color_preview.pack(side=tk.TOP, pady=(0, 10))
+        
+
+        self.info_frame = tk.Frame(self.info_panel, bg=self.colors["panel"])
+        self.info_frame.pack(fill=tk.BOTH, expand=True)
+        
+
+        self.status_bar = tk.Label(main_container, text="Ready", bd=1, relief=tk.SUNKEN, anchor=tk.W,
+                                 bg=self.colors["dark"], fg=self.colors["light"], padx=10)
+        self.status_bar.pack(fill=tk.X, pady=(10, 0))
 
     def bind_events(self):
         self.root.bind("<Control-MouseWheel>", self.ctrl_scroll_zoom)
@@ -121,6 +204,11 @@ class ColorIdentifierApp:
         self.canvas.delete("all")
         self.canvas_image = self.canvas.create_image(0, 0, image=self.tk_img, anchor=tk.NW)
         self.canvas.image = self.tk_img
+        
+
+        zoom_percent = int(self.zoom_level * 100)
+        self.zoom_label.config(text=f"Zoom: {zoom_percent}%")
+        self.status_bar.config(text=f"Image size: {width}x{height} pixels | Zoom: {zoom_percent}%")
 
     def zoom_at_cursor(self, scale, event):
         if not self.original_image:
@@ -169,23 +257,57 @@ class ColorIdentifierApp:
     def display_color_info(self, info_dict):
         for widget in self.info_frame.winfo_children():
             widget.destroy()
+            
+     
+     
+        hex_color = info_dict.get("Hex", "#FFFFFF")
+        self.color_preview.delete("all")
+        self.color_preview.create_rectangle(0, 0, 150, 100, fill=hex_color, outline="")
+        
+       
+        rgb = info_dict.get("RGB", "(255, 255, 255)")
+        r, g, b = [int(x.strip()) for x in rgb.strip("()").split(",")]
+        
+
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        text_color = "#000000" if brightness > 128 else "#FFFFFF"
+
+        name = info_dict.get("Nearest Named Color", "")
+        self.color_preview.create_text(75, 50, text=name, fill=text_color, 
+                                     font=("Segoe UI", 10, "bold"), width=140, justify="center")
+        
+
         for label, value in info_dict.items():
-            frame = tk.Frame(self.info_frame, bg="#2c3e50")
-            frame.pack(anchor='w', padx=10, pady=2, fill=tk.X)
-            lbl = tk.Label(frame, text=f"{label}:", width=18, anchor='w',
-                           bg="#2c3e50", fg="white", font=("Courier", 11, "bold"))
+      
+            if label == "Nearest Named Color":
+                continue
+                
+            frame = tk.Frame(self.info_frame, bg=self.colors["panel"], pady=3)
+            frame.pack(anchor='w', fill=tk.X)
+            
+            lbl = tk.Label(frame, text=f"{label}:", width=9, anchor='w',
+                         bg=self.colors["panel"], fg=self.colors["light"], 
+                         font=("Segoe UI", 10, "bold"))
             lbl.pack(side=tk.LEFT)
+            
             val_lbl = tk.Label(frame, text=value, anchor='w',
-                               bg="#2c3e50", fg="lightgreen", font=("Courier", 11))
-            val_lbl.pack(side=tk.LEFT, padx=(5, 10))
+                             bg=self.colors["panel"], fg=self.colors["primary"], 
+                             font=("Segoe UI", 10))
+            val_lbl.pack(side=tk.LEFT, padx=(0, 5))
+            
             copy_btn = tk.Button(frame, text="Copy", command=lambda v=value: self.copy_to_clipboard(v),
-                                 bg="#1abc9c", fg="white", font=("Arial", 9, "bold"))
-            copy_btn.pack(side=tk.LEFT)
+                               bg=self.colors["accent"], fg=self.colors["light"], 
+                               font=("Segoe UI", 8), padx=5, pady=0,
+                               borderwidth=0, cursor="hand2")
+            copy_btn.pack(side=tk.RIGHT, padx=(0, 5))
+        
+        self.status_bar.config(text=f"Selected color: {hex_color} | {name}")
 
     def copy_to_clipboard(self, text):
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
         self.root.update()
+        self.status_bar.config(text=f"Copied to clipboard: {text}")
 
     def get_color(self, event):
         if not self.original_image:
